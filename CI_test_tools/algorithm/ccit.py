@@ -162,7 +162,7 @@ best_params=None,
 
 
 if __name__ == '__main__':
-    from CI_test.data_generation.simple_cos import gen_cond_ind_data, gen_non_cond_ind_data
+    from CI_test_tools.data_generation.simple_cos import gen_cond_ind_data, gen_non_cond_ind_data
 
     pvals = []
     best_params = xgb_cross_validate(*gen_non_cond_ind_data(3000))

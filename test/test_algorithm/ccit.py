@@ -1,7 +1,7 @@
 import unittest
-from CI_test.data_generation.simple_cos import gen_cond_ind_data, gen_non_cond_ind_data
-from CI_test.data_generation.single_pendulum import simulate
-from CI_test.algorithm.ccit import cci_test, xgb_cross_validate
+from CI_test_tools.data_generation.simple_cos import gen_cond_ind_data, gen_non_cond_ind_data
+from CI_test_tools.data_generation.single_pendulum import simulate
+from CI_test_tools.algorithm.ccit import cci_test, xgb_cross_validate
 import numpy as np
 
 
