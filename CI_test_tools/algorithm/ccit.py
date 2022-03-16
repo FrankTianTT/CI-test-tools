@@ -7,6 +7,7 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import roc_auc_score, accuracy_score
 from xgboost import XGBClassifier
+from sklearn.neural_network import MLPClassifier
 from math import erfc
 from multiprocessing import Pool
 from functools import partial
@@ -97,10 +98,7 @@ def xgb_out(x, y, z, best_params,
     acc, auc = xgb_train_and_eval(train_data, train_label, test_data, test_label, best_params)
     bias_acc, bias_auc = xgb_train_and_eval(bias_train_data, train_label, bias_test_data, test_label, best_params)
 
-    if auc > bias_auc + threshold:
-        return [0.0, auc - bias_auc, bias_auc - 0.5, acc - bias_acc, bias_acc - 0.5]
-    else:
-        return [1.0, auc - bias_auc, bias_auc - 0.5, acc - bias_acc, bias_acc - 0.5]
+    return acc, auc, bias_acc, bias_auc
 
 
 def pvalue(x, sigma):
@@ -110,15 +108,15 @@ def pvalue(x, sigma):
 def cci_test(x, y, z,
              train_ratio=2 / 3,
              max_depth=None, n_estimators=None, colsample_bytree=None,
-best_params=None,
+             best_params=None,
              cv_n_fold=5,
              k=1,
              threshold=0.03,
              num_iter=20,
              n_thread=8,
              bootstrap=False,
-             seed=623,
-             verbose=False):
+             verbose=False,
+             return_info=False):
     if max_depth is None:
         max_depth = [6, 10, 13]
     if n_estimators is None:
@@ -126,7 +124,6 @@ best_params=None,
     if colsample_bytree is None:
         colsample_bytree = [0.4, 0.8]
 
-    np.random.seed(seed)
     assert len(x) == len(y) == len(z)
     sample_num = len(x)
 
@@ -153,12 +150,15 @@ best_params=None,
     else:
         xgb_result = [xgb_out(**xgb_out_kwargs)]
 
-    xgb_result = np.array(xgb_result)
+    xgb_result_mean = np.array(xgb_result).mean(axis=0)
 
-    relative_acc = np.mean(xgb_result[:, 3])
+    relative_acc = xgb_result_mean[0] - xgb_result_mean[2]
     p_value = pvalue(relative_acc, 1 / np.sqrt(sample_num))
 
-    return p_value
+    if return_info:
+        return p_value, xgb_result_mean
+    else:
+        return p_value
 
 
 if __name__ == '__main__':
@@ -168,7 +168,7 @@ if __name__ == '__main__':
     best_params = xgb_cross_validate(*gen_non_cond_ind_data(3000))
     print(best_params)
     for i in range(5):
-        pval = cci_test(*gen_non_cond_ind_data(3000, seed=i), bootstrap=False, seed=i, best_params=best_params)
+        pval = cci_test(*gen_non_cond_ind_data(3000, seed=i), bootstrap=False, best_params=best_params)
         pvals.append(pval)
     print(pvals)
     # [3.109724167965409e-07, 0.001183439954763605, 0.009256195044654905, 0.00022794000260280948, 0.0030849496602720593]
@@ -177,7 +177,7 @@ if __name__ == '__main__':
     best_params = xgb_cross_validate(*gen_cond_ind_data(3000))
     print(best_params)
     for i in range(5):
-        pval = cci_test(*gen_cond_ind_data(3000, seed=i), bootstrap=False, seed=i, best_params=best_params)
+        pval = cci_test(*gen_cond_ind_data(3000, seed=i), bootstrap=False, best_params=best_params)
         pvals.append(pval)
     print(pvals)
     # [0.39209561470080945, 0.5218400480422483, 0.7356137583414126, 0.4455428101086095, 0.21354017120091398]
